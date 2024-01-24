@@ -51,6 +51,8 @@ struct bq27xxx_reg_cache {
 	int flags;
 	int power_avg;
 	int health;
+	int elapsed_months;
+	int charge_voltage;
 };
 
 struct bq27xxx_device_info {
@@ -70,10 +72,14 @@ struct bq27xxx_device_info {
 	struct list_head list;
 	struct mutex lock;
 	u8 *regs;
+	int fake_temp;
+	int battery_maintenance;
+	int last_current;
 };
 
 void bq27xxx_battery_update(struct bq27xxx_device_info *di);
 int bq27xxx_battery_setup(struct bq27xxx_device_info *di);
 void bq27xxx_battery_teardown(struct bq27xxx_device_info *di);
+void bq27xxx_battery_maintenance(struct bq27xxx_device_info *di);
 
 #endif

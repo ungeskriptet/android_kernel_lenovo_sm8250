@@ -46,6 +46,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_AK5558 if I2C
 	select SND_SOC_ALC5623 if I2C
 	select SND_SOC_ALC5632 if I2C
+        select SND_SOC_AS33970 if I2C
 	select SND_SOC_BT_SCO
 	select SND_SOC_BD28623
 	select SND_SOC_CQ0093VC
@@ -79,6 +80,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_ES8328_SPI if SPI_MASTER
 	select SND_SOC_ES8328_I2C if I2C
 	select SND_SOC_ES7134
+        select SND_SOC_ES7210
 	select SND_SOC_ES7241
 	select SND_SOC_GTM601
 	select SND_SOC_HDAC_HDMI
@@ -428,6 +430,10 @@ config SND_SOC_ALC5623
 config SND_SOC_ALC5632
 	tristate
 
+config SND_SOC_AS33970
+       tristate "SYNA AS33970 CODEC"
+       depends on I2C
+
 config SND_SOC_BD28623
 	tristate "ROHM BD28623 CODEC"
 	help
@@ -586,6 +592,10 @@ config SND_SOC_HDMI_CODEC
 
 config SND_SOC_ES7134
        tristate "Everest Semi ES7134 CODEC"
+
+config SND_SOC_ES7210
+       tristate "Everest Semi ES7210 ADC"
+       default n
 
 config SND_SOC_ES7241
        tristate "Everest Semi ES7241 CODEC"

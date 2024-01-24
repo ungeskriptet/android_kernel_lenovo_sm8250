@@ -39,6 +39,7 @@
 #include <linux/extcon.h>
 #include <linux/reset.h>
 #include <linux/clk/qcom.h>
+#include <linux/get_otg_id.h>
 
 #include "power.h"
 #include "core.h"
@@ -119,6 +120,7 @@
 #define DWC3_GEVNTADRHI_EVNTADRHI_GSI_EN(n)	(n << 22)
 #define DWC3_GEVNTADRHI_EVNTADRHI_GSI_IDX(n)	(n << 16)
 #define DWC3_GEVENT_TYPE_GSI			0x3
+int otg_state = 1;
 
 enum usb_gsi_reg {
 	GENERAL_CFG_REG,
@@ -665,6 +667,13 @@ int msm_dwc3_reset_dbm_ep(struct usb_ep *ep)
 }
 EXPORT_SYMBOL(msm_dwc3_reset_dbm_ep);
 
+int get_otg_state(char *str)
+{
+        get_option(&str, &otg_state);
+        printk("otg_state = %d\n", otg_state);
+        return 1;
+}
+EXPORT_SYMBOL(get_otg_state);
 
 /**
  * Helper function.
@@ -3383,6 +3392,7 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 		dev_dbg(mdwc->dev, "Connected to CDP, pull DP up\n");
 		usb_phy_drive_dp_pulse(mdwc->hs_phy, DP_PULSE_WIDTH_MSEC);
 	}
+    mdwc->id_state = DWC3_ID_FLOAT;
 
 	if (dwc3_is_otg_or_drd(dwc) && !mdwc->in_restart)
 		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
@@ -3524,6 +3534,50 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 }
 
 static DEVICE_ATTR_RW(mode);
+
+static ssize_t otg_enable_store(struct device *dev, struct device_attribute *attr,
+                const char *buf, size_t count)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	if (sysfs_streq(buf, "1")) {
+		mdwc->vbus_active = false;
+		mdwc->id_state = DWC3_ID_GROUND;
+		otg_state = 0;
+	} else if (sysfs_streq(buf, "0")) {
+		if (typec_attached && !typec_stat) {
+			mdwc->vbus_active = true;
+			mdwc->id_state = DWC3_ID_FLOAT;
+			otg_state = 1;
+		} else {
+			mdwc->vbus_active = false;
+			mdwc->id_state = DWC3_ID_FLOAT;
+			otg_state = 1;
+		}
+	} else {
+		mdwc->vbus_active = false;
+		mdwc->id_state = DWC3_ID_FLOAT;
+		otg_state = 1;
+	}
+
+	dwc3_ext_event_notify(mdwc);
+
+	return count;
+}
+
+static ssize_t otg_enable_show(struct device *dev, struct device_attribute *attr,
+                char *buf)
+{
+
+        if (0 == otg_state)
+               return snprintf(buf, PAGE_SIZE, "y\n");
+        else
+               return snprintf(buf, PAGE_SIZE, "n\n");
+
+}
+
+static DEVICE_ATTR_RW(otg_enable);
+
 static void msm_dwc3_perf_vote_work(struct work_struct *w);
 
 /* This node only shows max speed supported dwc3 and it should be
@@ -4053,6 +4107,22 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			dwc->vbus_active = true;
 			break;
 		}
+        
+        if (0 == otg_state) {
+			//enable otg
+			mdwc->vbus_active = false;
+			mdwc->id_state = DWC3_ID_GROUND;
+		} else if (1 == otg_state) {
+			if (typec_attached && !typec_stat) {
+				mdwc->vbus_active = true;
+				mdwc->id_state = DWC3_ID_FLOAT;
+			} else {
+				mdwc->vbus_active = false;
+				mdwc->id_state = DWC3_ID_FLOAT;
+			}
+		} else {
+			// do nothing
+		}
 
 		dwc3_ext_event_notify(mdwc);
 	}
@@ -4062,6 +4132,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	device_create_file(&pdev->dev, &dev_attr_speed);
 	device_create_file(&pdev->dev, &dev_attr_usb_compliance_mode);
 	device_create_file(&pdev->dev, &dev_attr_bus_vote);
+    device_create_file(&pdev->dev, &dev_attr_otg_enable);
 
 	return 0;
 
@@ -4576,7 +4647,7 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned int mA)
 		 * bail out if suspend happened with float cable
 		 * connected
 		 */
-		if (mA == 2)
+		if ((mA == 2) || (mA == 100))
 			return 0;
 
 		if (!mA)
@@ -4931,6 +5002,8 @@ static struct platform_driver dwc3_msm_driver = {
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("DesignWare USB3 MSM Glue Layer");
+
+__setup("androidboot.otgdis=", get_otg_state);
 
 static int dwc3_msm_init(void)
 {

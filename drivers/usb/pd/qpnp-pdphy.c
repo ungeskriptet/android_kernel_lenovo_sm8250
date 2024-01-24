@@ -179,7 +179,7 @@ static void pdphy_create_debugfs_entries(struct usb_pdphy *pdphy)
 		return;
 	}
 
-	ent = debugfs_create_file("status", 0400, pdphy->debug_root, pdphy,
+	ent = debugfs_create_file("status", 0444, pdphy->debug_root, pdphy,
 				  &status_ops);
 	if (!ent) {
 		dev_warn(pdphy->dev, "Couldn't create status file\n");

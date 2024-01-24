@@ -139,8 +139,8 @@ void mmc_retune_release(struct mmc_host *host)
 {
 	if (host->hold_retune)
 		host->hold_retune -= 1;
-	else
-		WARN_ON(1);
+//	else
+//		WARN_ON(1);
 }
 EXPORT_SYMBOL(mmc_retune_release);
 

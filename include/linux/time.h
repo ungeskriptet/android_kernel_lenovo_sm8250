@@ -21,6 +21,8 @@ int put_itimerspec64(const struct itimerspec64 *it,
 extern time64_t mktime64(const unsigned int year, const unsigned int mon,
 			const unsigned int day, const unsigned int hour,
 			const unsigned int min, const unsigned int sec);
+#define CURRENT_TIME		(current_kernel_time())
+#define CURRENT_TIME_SEC	((struct timespec) { get_seconds(), 0 })
 
 /* Some architectures do not supply their own clocksource.
  * This is mainly the case in architectures that get their

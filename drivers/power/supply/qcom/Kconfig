@@ -40,6 +40,12 @@ config QPNP_SMBLITE
 	  as fuel gauge and USB.
 	  VBUS regulator is registered for supporting OTG.
 
+config QPNP_FLOAT_CHG_RECHECK
+	bool "Float charger recheck"
+	depends on QPNP_SMB5
+	help
+	  Say Y to enable support for factory charger recheck.
+
 config QPNP_VM_BMS
 	tristate "QPNP Voltage-Mode Battery Monitoring System driver"
 	depends on MFD_SPMI_PMIC

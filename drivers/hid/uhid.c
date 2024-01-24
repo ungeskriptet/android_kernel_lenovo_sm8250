@@ -176,6 +176,12 @@ static int __uhid_report_queue_and_wait(struct uhid_device *uhid,
 	uhid_queue(uhid, ev);
 	spin_unlock_irqrestore(&uhid->qlock, flags);
 
+	if ((uhid->hid->vendor == 0x17ef) && (uhid->hid->product == 0x6127)) {
+		hid_warn(uhid->hid, "Don't wait for 6127 BT keyboard pack\n");
+		ret = -EIO;
+		uhid->report_running = false;
+		return ret;
+	}
 	ret = wait_event_interruptible_timeout(uhid->report_wait,
 				!uhid->report_running || !uhid->running,
 				5 * HZ);

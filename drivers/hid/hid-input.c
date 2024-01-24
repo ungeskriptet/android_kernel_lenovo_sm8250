@@ -60,6 +60,8 @@ static const struct {
 	__s32 y;
 }  hid_hat_to_axis[] = {{ 0, 0}, { 0,-1}, { 1,-1}, { 1, 0}, { 1, 1}, { 0, 1}, {-1, 1}, {-1, 0}, {-1,-1}};
 
+bool lenovo_i2c_kb_registed = false;
+
 #define map_abs(c)	hid_map_usage(hidinput, usage, &bit, &max, EV_ABS, (c))
 #define map_rel(c)	hid_map_usage(hidinput, usage, &bit, &max, EV_REL, (c))
 #define map_key(c)	hid_map_usage(hidinput, usage, &bit, &max, EV_KEY, (c))
@@ -1746,6 +1748,9 @@ int hidinput_connect(struct hid_device *hid, unsigned int force)
 	INIT_LIST_HEAD(&hid->inputs);
 	INIT_WORK(&hid->led_work, hidinput_led_worker);
 
+	if((hid->vendor == 0x17EF) && (hid->product == 0x6127)) {
+		hid->quirks &= ~HID_QUIRK_INPUT_PER_APP;
+	}
 	hid->status &= ~HID_STAT_DUP_DETECTED;
 
 	if (!force) {
@@ -1815,6 +1820,10 @@ int hidinput_connect(struct hid_device *hid, unsigned int force)
 		if (input_register_device(hidinput->input))
 			goto out_unwind;
 		hidinput->registered = true;
+		/* Lenovo 1-wire keyboard */
+		if((hid->vendor == 0x17EF) && (hid->product == 0x6127) && (hid->bus == BUS_I2C)) {
+			lenovo_i2c_kb_registed = true;
+		}
 	}
 
 	if (list_empty(&hid->inputs)) {
@@ -1844,10 +1853,15 @@ void hidinput_disconnect(struct hid_device *hid)
 
 	list_for_each_entry_safe(hidinput, next, &hid->inputs, list) {
 		list_del(&hidinput->list);
-		if (hidinput->registered)
+		if (hidinput->registered) {
+			/* Lenovo 1-wire keyboard */
+			if((hid->vendor == 0x17EF) && (hid->product == 0x6127) && (hid->bus == BUS_I2C)) {
+				lenovo_i2c_kb_registed = false;
+			}
 			input_unregister_device(hidinput->input);
-		else
+		} else {
 			input_free_device(hidinput->input);
+		}
 		kfree(hidinput->name);
 		kfree(hidinput);
 	}

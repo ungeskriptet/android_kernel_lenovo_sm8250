@@ -215,6 +215,37 @@ static ssize_t brightness_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(brightness);
 
+static ssize_t hbm_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct backlight_device *bd = to_backlight_device(dev);
+
+	return sprintf(buf, "%d\n", bd->props.hbm);
+}
+
+static ssize_t hbm_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int rc;
+	struct backlight_device *bd = to_backlight_device(dev);
+	unsigned long hbm;
+
+	rc = kstrtoul(buf, 0, &hbm);
+	if (rc)
+		return rc;
+
+	mutex_lock(&bd->ops_lock);
+	if (bd->ops) {
+		bd->props.hbm = hbm;
+		rc = backlight_update_status(bd);
+	}
+	mutex_unlock(&bd->ops_lock);
+
+	return rc ? rc : count;
+}
+static DEVICE_ATTR_RW(hbm);
+
+
 static ssize_t type_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
@@ -297,6 +328,7 @@ static struct attribute *bl_device_attrs[] = {
 	&dev_attr_actual_brightness.attr,
 	&dev_attr_max_brightness.attr,
 	&dev_attr_type.attr,
+	&dev_attr_hbm.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(bl_device);

@@ -637,6 +637,7 @@ source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/fpr_FingerprintCard/Kconfig"
+source "drivers/misc/ctn730/Kconfig"
 source "drivers/misc/qrc/Kconfig"
 endmenu
 
@@ -658,3 +659,23 @@ config OKL4_LINK_SHBUF
 	      transport. This driver presents the link to Linux as a character device
 	      which can be written to or read from to access the shared memory. An ioctl
 	      on the device is used to send a virtual interrupt to the partner cell.
+
+config HW_BOOT_INFO
+	    bool "HW Boot Info Support"
+	    default y
+	    help
+	      Enable driver for HW BOOT INFO.
+
+config HW_PM_DEBUG
+	    bool "HW PM Debug Support"
+	    default y
+	    depends on HW_BOOT_INFO
+	    help
+	      Enable Support for HW PM DEBUG.
+
+config HW_BOARD_ID_ROW_PRC
+	    bool "HW BOARD ID ROW PRC"
+	    default n
+	    depends on HW_BOOT_INFO
+	    help
+	      Enable Feature for HW Board with ID_ROW_PRC

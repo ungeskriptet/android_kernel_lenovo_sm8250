@@ -65,7 +65,6 @@ enum print_reason {
 #define JEITA_ARB_VOTER			"JEITA_ARB_VOTER"
 #define MOISTURE_VOTER			"MOISTURE_VOTER"
 #define HVDCP2_ICL_VOTER		"HVDCP2_ICL_VOTER"
-#define HVDCP2_12V_ICL_VOTER		"HVDCP2_12V_ICL_VOTER"
 #define AICL_THRESHOLD_VOTER		"AICL_THRESHOLD_VOTER"
 #define USBOV_DBC_VOTER			"USBOV_DBC_VOTER"
 #define CHG_TERMINATION_VOTER		"CHG_TERMINATION_VOTER"
@@ -95,15 +94,31 @@ enum print_reason {
 #define SDP_100_MA			100000
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
-#define DCP_CURRENT_UA			1500000
+#define DCP_CURRENT_UA			3000000
 #define HVDCP_CURRENT_UA		3000000
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
-#define DCIN_ICL_MIN_UA			100000
-#define DCIN_ICL_MAX_UA			1500000
-#define DCIN_ICL_STEP_UA		100000
+#define DCIN_ICL_MIN_UA			0
+#define DCIN_ICL_MAX_UA			2376000
+#define DCIN_ICL_STEP_UA		79200
 #define ROLE_REVERSAL_DELAY_MS		500
+#define SDP_FLOAT_UA			500000
+
+#define EXFG_STEP0_VOLTAGE_MV	4480
+#define EXFG_STEP1_VOLTAGE_MV	4400
+#define EXFG_STEP2_VOLTAGE_MV	4350
+#define EXFG_STEP3_VOLTAGE_MV	4200
+
+#define EXFG_STEP0_RECHARGE_VOLTAGE_MV	4380
+#define EXFG_STEP1_RECHARGE_VOLTAGE_MV	4250
+#define EXFG_STEP2_RECHARGE_VOLTAGE_MV	4200
+#define EXFG_STEP3_RECHARGE_VOLTAGE_MV	4100
+
+#define EXFG_STEP0_FLOAT_VOLTAGE_MV	4490000
+#define EXFG_STEP1_FLOAT_VOLTAGE_MV	4420000
+#define EXFG_STEP2_FLOAT_VOLTAGE_MV	4380000
+#define EXFG_STEP3_FLOAT_VOLTAGE_MV	4250000
 
 enum smb_mode {
 	PARALLEL_MASTER = 0,
@@ -398,9 +413,11 @@ struct smb_charger {
 	struct mutex		adc_lock;
 	struct mutex		dpdm_lock;
 	struct mutex		typec_lock;
+	struct mutex		pd_ws_lock;
 
 	/* power supplies */
 	struct power_supply		*batt_psy;
+	struct power_supply		*exfg_psy;
 	struct power_supply		*usb_psy;
 	struct power_supply		*dc_psy;
 	struct power_supply		*bms_psy;
@@ -471,6 +488,10 @@ struct smb_charger {
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
 	struct delayed_work	role_reversal_check;
+	struct delayed_work	usb_plugin_work;
+#ifdef CONFIG_QPNP_FLOAT_CHG_RECHECK
+	struct delayed_work	float_chg_work;
+#endif /* CONFIG_QPNP_FLOAT_CHG_RECHECK */
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
@@ -499,7 +520,8 @@ struct smb_charger {
 	bool			typec_legacy;
 	bool			typec_irq_en;
 	bool			typec_role_swap_failed;
-
+	bool 			pd_ws_actived;
+	struct wakeup_source	*pd_ws;
 	/* cached status */
 	bool			system_suspend_supported;
 	int			boost_threshold_ua;
@@ -584,6 +606,7 @@ struct smb_charger {
 	bool			dpdm_enabled;
 	bool			apsd_ext_timeout;
 	bool			qc3p5_detected;
+	int			recharge_mv;
 
 	/* workaround flag */
 	u32			wa_flags;
@@ -617,6 +640,15 @@ struct smb_charger {
 	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
+
+	/* otg boost gpio */
+	int			gpio_boost_en;
+
+	/* pogo */
+	bool 			pogo_5v;
+	int			gpio_cradle;
+	/* lenovo jeita */
+	bool			lenovo_jeita;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -700,6 +732,8 @@ int smblib_get_prop_input_current_limited(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_batt_iterm(struct smb_charger *chg,
 				union power_supply_propval *val);
+int smblib_set_prop_batt_iterm(struct smb_charger *chg,
+				const union power_supply_propval *val);
 int smblib_set_prop_input_suspend(struct smb_charger *chg,
 				const union power_supply_propval *val);
 int smblib_set_prop_batt_capacity(struct smb_charger *chg,
@@ -821,6 +855,9 @@ int smblib_typec_port_type_set(const struct typec_capability *cap,
 int smblib_get_prop_from_bms(struct smb_charger *chg,
 				enum power_supply_property psp,
 				union power_supply_propval *val);
+int smblib_get_prop_from_exfg(struct smb_charger *chg,
+				enum power_supply_property psp,
+				union power_supply_propval *val);
 int smblib_get_iio_channel(struct smb_charger *chg, const char *propname,
 					struct iio_channel **chan);
 int smblib_read_iio_channel(struct smb_charger *chg, struct iio_channel *chan,
@@ -841,4 +878,6 @@ int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
 
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
+int smblib_set_smb_en(struct smb_charger *chg, int enable);
+
 #endif /* __SMB5_CHARGER_H */

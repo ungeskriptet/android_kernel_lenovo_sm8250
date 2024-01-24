@@ -82,6 +82,8 @@ struct backlight_properties {
 	/* Flags used to signal drivers of state changes */
 	unsigned int state;
 
+  	unsigned int hbm;
+  
 #define BL_CORE_SUSPENDED	(1 << 0)	/* backlight is suspended */
 #define BL_CORE_FBBLANK		(1 << 1)	/* backlight is under an fb blank event */
 

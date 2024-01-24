@@ -157,7 +157,7 @@ struct ssusb_redriver {
 
 	struct dentry	*debug_root;
 };
-
+extern register_hardware_info(const char *name, const char *model);
 static int ssusb_redriver_channel_update(struct ssusb_redriver *redriver);
 static void ssusb_redriver_debugfs_entries(struct ssusb_redriver *redriver);
 
@@ -846,7 +846,7 @@ static int redriver_i2c_probe(struct i2c_client *client,
 			&redriver->panic_nb);
 
 	ssusb_redriver_debugfs_entries(redriver);
-
+	register_hardware_info("typec-redriver","onnn-nb7vpq904m");
 	dev_dbg(&client->dev, "USB 3.1 Gen1/Gen2 Re-Driver Probed.\n");
 
 	return 0;

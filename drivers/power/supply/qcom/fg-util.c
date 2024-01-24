@@ -455,7 +455,19 @@ bool pc_port_psy_initialized(struct fg_dev *fg)
 
 	return true;
 }
-
+bool is_smb1398_charger_available(struct fg_dev *fg){
+	union power_supply_propval prop = {0, };
+	
+	if (!fg->cp_psy)
+		fg->cp_psy = power_supply_get_by_name("charge_pump_master");
+	if(fg->cp_psy){
+		power_supply_get_property(fg->cp_psy, POWER_SUPPLY_PROP_MODEL_NAME, &prop);
+		if(strstr(prop.strval, "SMB1398")){
+			return true;
+		}
+	}
+	return false;
+}
 bool is_parallel_charger_available(struct fg_dev *fg)
 {
 	if (!fg->parallel_psy)

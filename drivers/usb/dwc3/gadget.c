@@ -3961,7 +3961,7 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 				dwc3_gadget_suspend_interrupt(dwc,
 						event->event_info);
 			else
-				usb_gadget_vbus_draw(&dwc->gadget, 2);
+				usb_gadget_vbus_draw(&dwc->gadget, 100);
 		}
 		break;
 	case DWC3_DEVICE_EVENT_SOF:

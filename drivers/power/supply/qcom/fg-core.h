@@ -434,6 +434,7 @@ struct fg_dev {
 	struct power_supply	*dc_psy;
 	struct power_supply	*parallel_psy;
 	struct power_supply	*pc_port_psy;
+	struct power_supply	*cp_psy;
 	struct fg_irq_info	*irqs;
 	struct votable		*awake_votable;
 	struct votable		*delta_bsoc_irq_en_votable;
@@ -599,6 +600,7 @@ extern void fg_notify_charger(struct fg_dev *fg);
 extern bool is_input_present(struct fg_dev *fg);
 extern bool is_qnovo_en(struct fg_dev *fg);
 extern bool is_parallel_charger_available(struct fg_dev *fg);
+extern bool is_smb1398_charger_available(struct fg_dev *fg);
 extern void fg_circ_buf_add(struct fg_circ_buf *buf, int val);
 extern void fg_circ_buf_clr(struct fg_circ_buf *buf);
 extern int fg_circ_buf_avg(struct fg_circ_buf *buf, int *avg);

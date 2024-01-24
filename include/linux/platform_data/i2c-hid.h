@@ -36,6 +36,12 @@ struct i2c_hid_platform_data {
 	u16 hid_descriptor_address;
 	struct regulator_bulk_data supplies[2];
 	int post_power_delay_ms;
+	int output_gpio;
+	bool preset_descriptors;
+	u8 *hid_descriptor;
+	int hid_descriptor_len;
+	u8 *hid_report_descriptor;
+	int hid_report_descriptor_len;
 };
 
 #endif /* __LINUX_I2C_HID_H */
